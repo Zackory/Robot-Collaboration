@@ -17,6 +17,7 @@ import org.opencv.core.Size;
 import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
 import org.opencv.videoio.VideoCapture;
+import org.opencv.videoio.Videoio;
 
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
@@ -37,6 +38,8 @@ public class FXController {
 	// a flag to change the button behavior
 	private boolean cameraActive = false;
 
+	private CameraDetector cameraDetector;
+
 	// Orange Working
 	private Scalar lowerOrange = new Scalar(40, 80, 80); // HSV
 	private Scalar upperOrange = new Scalar(60, 255, 255); // HSV
@@ -53,18 +56,23 @@ public class FXController {
 	protected void startCamera(ActionEvent event) {	
 		if (!this.cameraActive)	{
 			// start the video capture
-			this.capture.open(0);
+			this.capture.open(1);
+			cameraDetector = new CameraDetector(1, capture);
 			
 			// is the video stream available?
 			if (this.capture.isOpened()) {
 				this.cameraActive = true;
+				
+				capture.set(Videoio.CV_CAP_PROP_FRAME_WIDTH, 1920);
+				capture.set(Videoio.CV_CAP_PROP_FRAME_HEIGHT, 1080);
 				
 				// grab a frame every 33 ms (30 frames/sec)
 				Runnable frameGrabber = new Runnable() {
 					@Override
 					public void run() {
 						Image imageToShow = grabFrame();
-						currentFrame.setImage(imageToShow);
+						if (imageToShow != null)
+							currentFrame.setImage(imageToShow);
 					}
 				};
 
@@ -108,6 +116,7 @@ public class FXController {
 			try {
 				// read the current frame
 				this.capture.read(frame);
+				// System.out.println("Frame: " + frame.width() + ", " + frame.height());
 				
 				// if the frame is not empty, process it
 				if (!frame.empty())	{
@@ -115,7 +124,15 @@ public class FXController {
 					// Imgproc.cvtColor(frame, frame, Imgproc.COLOR_BGR2GRAY);
 					
 //					frame = detectColors(frame);
-					frame = detectARContours(frame);
+					// frame = detectARContours(frame);
+					
+					CameraDetector.DirectionPosition dirPos = cameraDetector.getDirection(1, frame.clone());
+					if (dirPos == null)
+						return null;
+					System.out.println(dirPos.direction + ", " + dirPos.x + ", " + dirPos.y);
+					// System.out.println(dirPos.x1y1[0] + ", " + dirPos.x1y1[1] + ", " + dirPos.x2y2[0] + ", " + dirPos.x2y2[1]);
+					Imgproc.line(frame, new Point(0, 0), new Point(dirPos.x, dirPos.y), new Scalar(33, 150, 243), 10);
+					Imgproc.line(frame, new Point(dirPos.x1y1[0], dirPos.x1y1[1]), new Point(dirPos.x2y2[0], dirPos.x2y2[1]), new Scalar(33, 150, 243), 10);
 					
 					double width = 10;
 					double height = 5;
@@ -127,19 +144,20 @@ public class FXController {
 					double endY = frame.height()/2.0 + (gridDim * height)/2.0;
 					
 					// Draw rows on image
-					for (int i = 0; i <= height; i++)
-						Imgproc.line(frame, new Point(startX, startY + i*gridDim), new Point(endX, startY + i*gridDim), new Scalar(7, 193, 255), 5);
+					// for (int i = 0; i <= height; i++)
+					// 	Imgproc.line(frame, new Point(startX, startY + i*gridDim), new Point(endX, startY + i*gridDim), new Scalar(7, 193, 255), 5);
 						
 					// Draw columns on image
-					for (int i = 0; i <= width; i++)
-						Imgproc.line(frame, new Point(startX + i*gridDim, startY), new Point(startX + i*gridDim, endY), new Scalar(7, 193, 255), 5);
+					// for (int i = 0; i <= width; i++)
+					// 	Imgproc.line(frame, new Point(startX + i*gridDim, startY), new Point(startX + i*gridDim, endY), new Scalar(7, 193, 255), 5);
 					
 					// convert the Mat object (OpenCV) to Image (JavaFX)
 					imageToShow = mat2Image(frame);
 				}
 			} catch (Exception e) {
 				// log the error
-				System.err.println("Exception during the image elaboration: " + e);
+				System.err.println("Exception during the image elaboration: ");
+				e.printStackTrace();
 			}
 		}
 		
@@ -166,10 +184,10 @@ public class FXController {
 	private Mat detectARContours(Mat colorFrame) {
 		Mat frame = new Mat();
 		// Convert the image to grayscale
-		Imgproc.cvtColor(colorFrame, frame, Imgproc.COLOR_BGR2GRAY);
+		Imgproc.cvtColor(colorFrame.clone(), frame, Imgproc.COLOR_BGR2GRAY);
 		
 		// Perform thresholding it determine dark (black) areas.
-		Imgproc.threshold(frame, frame, 175, 255, Imgproc.THRESH_BINARY);
+		Imgproc.threshold(frame, frame, 150, 255, Imgproc.THRESH_BINARY);
 		// Imgproc.adaptiveThreshold(frame, frame, 255, Imgproc.ADAPTIVE_THRESH_GAUSSIAN_C, Imgproc.THRESH_BINARY, 11, 2);
 		// Erode and then dilate to filter noise / small dots
 		Imgproc.erode(frame, frame, kernel, new Point(0, 0), 3);
@@ -179,9 +197,11 @@ public class FXController {
 		ArrayList<MatOfPoint> contours = new ArrayList<MatOfPoint>();    
 	    Imgproc.findContours(frame, contours, new Mat(), Imgproc.RETR_TREE, Imgproc.CHAIN_APPROX_SIMPLE);
 
-		Imgproc.drawContours(frame, contours, 0, new Scalar(100, 100, 100), 20);
-		System.out.println(contours.get(0).rows() + ", " + contours.get(0).cols() + ", " + contours.get(0).row(0).dump());
-		return frame;/*
+	    for (int i = 0; i < contours.size(); i++) { 
+			Imgproc.drawContours(colorFrame, contours, i, new Scalar(0, 127, 255), 2);
+			// System.out.println(contours.get(0).rows() + ", " + contours.get(0).cols() + ", " + contours.get(0).row(0).dump());
+	    }
+		return colorFrame;/*
 	    System.out.println("Number of contours: " + contours.size());
 	    // Find a contour that has two children.
 	    // OpenCV represents tree structure with array of array elements: [Next, Previous, First_Child, Parent]

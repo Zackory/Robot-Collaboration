@@ -37,7 +37,7 @@ public class Oracle {
 		qlearn = new QLearning("world.txt");
 		state1 = qlearn.start1;
 		state2 = qlearn.start2;
-		camera = new CameraDetector(0);
+		camera = new CameraDetector(0, null);
 
 		// Setup grid dimensions
 		startX = camera.width / 8.0;
@@ -97,6 +97,7 @@ public class Oracle {
 		robot2Out.close();
 		socket1.close();
 		socket2.close();
+		camera.closeCamera();
 	}
 
 	public void takeNextAction() {
