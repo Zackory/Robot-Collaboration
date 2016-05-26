@@ -6,9 +6,7 @@ import java.util.HashMap;
 import java.util.Random;
 import java.util.Scanner;
 
-import uwl.learning.QLearning.State;
-
-public class QLearning {
+public class QLearningWithEpisodes {
 	//	public String[] actions = {"U", "D", "L", "R"};
 	public HashMap<String, State> actions = new HashMap<String, State>();
 	public String[] actionArray;
@@ -31,10 +29,10 @@ public class QLearning {
 	public boolean verbose = false;
 
 	public static void main(String[] args) {
-		new QLearning("world.txt");
+		new QLearningWithEpisodes("world.txt");
 	}
 
-	public QLearning(String filename) {
+	public QLearningWithEpisodes(String filename) {
 		// Load world map
 		if (verbose) System.out.println("Loading world");
 		loadWorld(filename);

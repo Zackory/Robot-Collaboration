@@ -1,5 +1,3 @@
-
-	
 import org.opencv.core.Core;
 
 import javafx.application.Application;

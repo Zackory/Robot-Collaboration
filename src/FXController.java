@@ -1,5 +1,3 @@
-
-
 import java.io.ByteArrayInputStream;
 import java.util.ArrayList;
 import java.util.concurrent.Executors;
@@ -46,6 +44,8 @@ public class FXController {
 
 	private Mat kernel = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(2, 2));
 	
+	int camInt = 0;
+	
 	/**
 	 * The action triggered by pushing the button on the GUI
 	 * 
@@ -56,15 +56,17 @@ public class FXController {
 	protected void startCamera(ActionEvent event) {	
 		if (!this.cameraActive)	{
 			// start the video capture
-			this.capture.open(1);
-			cameraDetector = new CameraDetector(1, capture);
+			this.capture.open(camInt);
+			cameraDetector = new CameraDetector(camInt, capture);
 			
 			// is the video stream available?
 			if (this.capture.isOpened()) {
 				this.cameraActive = true;
 				
-				capture.set(Videoio.CV_CAP_PROP_FRAME_WIDTH, 1920);
-				capture.set(Videoio.CV_CAP_PROP_FRAME_HEIGHT, 1080);
+				if (camInt == 0) {
+					capture.set(Videoio.CV_CAP_PROP_FRAME_WIDTH, 1920);
+					capture.set(Videoio.CV_CAP_PROP_FRAME_HEIGHT, 1080);
+				}
 				
 				// grab a frame every 33 ms (30 frames/sec)
 				Runnable frameGrabber = new Runnable() {
@@ -77,7 +79,7 @@ public class FXController {
 				};
 
 				this.timer = Executors.newSingleThreadScheduledExecutor();
-				this.timer.scheduleAtFixedRate(frameGrabber, 0, 33, TimeUnit.MILLISECONDS);
+				this.timer.scheduleAtFixedRate(frameGrabber, 0, 500, TimeUnit.MILLISECONDS);
 				
 				this.button.setText("Stop Camera");
 			} else {
@@ -126,12 +128,12 @@ public class FXController {
 //					frame = detectColors(frame);
 					// frame = detectARContours(frame);
 					
-					CameraDetector.DirectionPosition dirPos = cameraDetector.getDirection(1, frame.clone());
+					CameraDetector.DirectionPosition dirPos = cameraDetector.getDirection(2, frame.clone());
 					if (dirPos == null)
-						return null;
+						return mat2Image(frame);
 					System.out.println(dirPos.direction + ", " + dirPos.x + ", " + dirPos.y);
 					// System.out.println(dirPos.x1y1[0] + ", " + dirPos.x1y1[1] + ", " + dirPos.x2y2[0] + ", " + dirPos.x2y2[1]);
-					Imgproc.line(frame, new Point(0, 0), new Point(dirPos.x, dirPos.y), new Scalar(33, 150, 243), 10);
+					Imgproc.line(frame, new Point(dirPos.centerX, dirPos.centerY), new Point(dirPos.centerX + dirPos.x, dirPos.centerY + dirPos.y), new Scalar(33, 150, 243), 10);
 					Imgproc.line(frame, new Point(dirPos.x1y1[0], dirPos.x1y1[1]), new Point(dirPos.x2y2[0], dirPos.x2y2[1]), new Scalar(33, 150, 243), 10);
 					
 					double width = 10;

@@ -1,7 +1,7 @@
 package uwl.learning;
+
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Random;
 import java.util.Scanner;
@@ -29,10 +29,10 @@ public class QLearningSimple {
 	public boolean verbose = false;
 
 	public static void main(String[] args) {
-		new QLearningSimple("world.txt");
+		new QLearningSimple("world.txt", null);
 	}
 
-	public QLearningSimple(String filename) {
+	public QLearningSimple(String filename, String qFilename) {
 		// Load world map
 		if (verbose) System.out.println("Loading world");
 		loadWorld(filename);
@@ -49,9 +49,13 @@ public class QLearningSimple {
 		agent1 = new Agent();
 		agent2 = new Agent();
 
-		// 2000 episodes, reducing epsilon every 10 episodes
-		learning(100000, 100);
-		// TODO one episode and a lot of iterations, reducing epsilon based on number of iterations.
+		if (qFilename == null) {
+			// 2000 episodes, reducing epsilon every 10 episodes
+			learning(1000000, 100);
+		} else {
+			agent1.loadQ(qFilename);
+			agent2.loadQ(qFilename);
+		}
 	}
 
 	public void learning(int iterations, int reduction) {
@@ -65,14 +69,15 @@ public class QLearningSimple {
         // Loop for several movement iterations.
         for (int iteration = 0; iteration < iterations; iteration++) {
             // Reduce epsilon
-            if (epsilon <= 0.01f) epsilon = 0.0f;
-            else if (iteration >= reduction) epsilon = 0.9f / (iteration / reduction);
+            //if (epsilon <= 0.01f) epsilon = 0.0f;
+            //else 
+            if (iteration >= reduction) epsilon = 0.9f / (iteration / reduction);
             
             // Print out current policy
-            if (iteration % 250 == 0) {
+            if (iteration % 5000 == 0) {
                 if (verbose) 
                     System.out.println("Iteration: " + iteration + ", Epsilon: " + epsilon);
-                printPolicy(iteration);
+                printPolicy(iteration, rewardSum);
             }
 
             // Determine actions, chosen epsilon-greedily based on Q(s,a)
@@ -91,17 +96,30 @@ public class QLearningSimple {
         }
 
 		// Print out final policy
-		printPolicy(iterations);
+		printPolicy(iterations, rewardSum);
 	}
 
-	public void printPolicy(int iteration) {
-		System.out.println("\nIteration: " + iteration);
+	// Pass in the current state of the agent. This will return the updated state if valid 
+	// (in the world), otherwise it returns the provided state (currentState)
+	public State updateState(Agent agent, State currentState) {
+		State nextState1 = currentState.add(actions.get(agent.nextAction(currentState, 0)));
+		String nextGrid1 = world.get(nextState1);
+		if (nextGrid1 != null)
+			return nextState1;
+		return null;
+	}
+
+	public void printPolicy(int iteration, float rewardSum) {
+		System.out.println("\nIteration: " + iteration + ", " + "Reward sum: " + rewardSum);
 		for (int y = 0; y < height; y++) {
 			for (int x = 0; x < width; x++)
 				System.out.print(agent1.nextAction(new State(x, y), 0) + " ");
 			System.out.print("  |  ");
 			for (int x = 0; x < width; x++)
 				System.out.print(agent2.nextAction(new State(x, y), 0) + " ");
+			System.out.print("  |  ");
+			for (int x = 0; x < width; x++)
+				System.out.print(currentWorld.get(new State(x, y)) + " ");
 			System.out.println();
 		}
 		System.out.println();
@@ -130,8 +148,8 @@ public class QLearningSimple {
 		String nextGrid2 = currentWorld.get(nextState2);
 
 		StateReward sr[] = new StateReward[2];
-		sr[0] = new StateReward(state1, -1); 
-		sr[1] = new StateReward(state2, -1);
+		sr[0] = new StateReward(state1, 0); 
+		sr[1] = new StateReward(state2, 0);
 
 		if (nextGrid1 == nextGrid2)
 			// Robots attempting to move into same grid (or both returned grids are null)
@@ -184,7 +202,7 @@ public class QLearningSimple {
 						currentWorld.replace(nextBoxState1, currentWorld.get(nextState1));
 						// Move agent to grid where box was
 						moveAgent(state1, nextState1);
-						sr[0] = new StateReward(nextState1, -1); // TODO trying non-negative reward for pushing box
+						sr[0] = new StateReward(nextState1, 0);
 					} else if (nextBoxGrid1.equals("G")) {
 						// Box has reached the goal. 
 						// Move box back to its beginning location (if it's not already preoccupied)
@@ -223,7 +241,7 @@ public class QLearningSimple {
 						currentWorld.replace(nextBoxState2, currentWorld.get(nextState2));
 						// Move agent to grid where box was
 						moveAgent(state2, nextState2);
-						sr[1] = new StateReward(nextState2, -1); // TODO trying non-negative reward for pushing box
+						sr[1] = new StateReward(nextState2, 0);
 					} else if (nextBoxGrid2.equals("G")) {
 						// Box has reached the goal. 
 						// Move box back to its beginning location (if it's not already preoccupied)
@@ -260,7 +278,7 @@ public class QLearningSimple {
 					currentWorld.replace(nextBoxState1, currentWorld.get(nextState1));
 					// Move agent to grid where box was
 					moveAgent(state1, nextState1);
-					sr[0] = new StateReward(nextState1, -1); // TODO trying non-negative reward for pushing box
+					sr[0] = new StateReward(nextState1, 0);
 				}
 			} else if (nextBoxGrid2 == currentGrid1 && sr[0].state != state1) {
 				// Verify box does not push into the left, right, or bottom grids (box would be stuck)
@@ -269,7 +287,7 @@ public class QLearningSimple {
 					currentWorld.replace(nextBoxState2, currentWorld.get(nextState2));
 					// Move agent to grid where box was
 					moveAgent(state2, nextState2);
-					sr[1] = new StateReward(nextState2, -1); // TODO trying non-negative reward for pushing box
+					sr[1] = new StateReward(nextState2, 0);
 				}
 			}
 		} 
@@ -277,12 +295,12 @@ public class QLearningSimple {
 		if (nextGrid1 != null && (nextGrid1.equals("O") || nextGrid1.equals("G"))) {
 			// Move agent to next grid
 			moveAgent(state1, nextState1);
-			sr[0] = new StateReward(nextState1, -1);
+			sr[0] = new StateReward(nextState1, 0);
 		} 
 		if (nextGrid2 != null && (nextGrid2.equals("O") || nextGrid2.equals("G"))) {
 			// Move agent to next grid
 			moveAgent(state2, nextState2);
-			sr[1] = new StateReward(nextState2, -1);
+			sr[1] = new StateReward(nextState2, 0);
 		} 
 
 
@@ -290,16 +308,16 @@ public class QLearningSimple {
 		if (nextGrid1 == currentGrid2 && sr[1].state != state2) {
 			// Move agent to next grid
 			moveAgent(state1, nextState1);
-			sr[0] = new StateReward(nextState1, -1);
+			sr[0] = new StateReward(nextState1, 0);
 		}
 		if (nextGrid2 == currentGrid1 && sr[0].state != state1) {
 			// Move agent to next grid
 			moveAgent(state2, nextState2);
-			sr[1] = new StateReward(nextState2, -1);
+			sr[1] = new StateReward(nextState2, 0);
 		}
 
 		if (nextGrid1 != null && nextGrid2 != null && nextGrid1.equals("D") && nextGrid2.equals("D") && action1.equals("U") && action2.equals("U")) {
-			// Both agents attempting to push double box
+			// Both agents attempting to push double box upwards
 		} 
 
 		// Ran into other player or any other failure case
@@ -391,11 +409,42 @@ public class QLearningSimple {
 			}
 			return action;
 		}
+
+		public void loadQ(String filename) {
+			int x = 0, y = 0;
+			Scanner scan;
+			// Reset Q matrix
+			for (State grid : world.keySet()) {
+				for (String action : actionArray) {
+					Q.put(new State(grid, action), 0.0f);
+				}
+			}
+			try {
+				scan = new Scanner(new File(filename));
+				while (scan.hasNextLine()) {
+					// Scan each row
+					x = 0;
+					Scanner s = new Scanner(scan.nextLine());
+					while (s.hasNext()) {
+						// Scan each column
+						String value = s.next();
+						if (verbose) System.out.printf("%d, %d, %s\n", x, y, value);
+						Q.replace(new State(new State(x, y), value), 1.0f);
+						x++;
+					}
+					y++;
+					s.close();
+				}
+				scan.close();
+			} catch (FileNotFoundException e) {
+				e.printStackTrace();
+			}
+		}
 	}
 
 	public class State {
-		int x, y;
-		String action = null;
+		public int x, y;
+		public String action = null;
 		public State(int x, int y) {
 			this.x = x; this.y = y;
 		}

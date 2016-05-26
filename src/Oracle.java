@@ -8,11 +8,11 @@ import java.net.UnknownHostException;
 
 import org.opencv.core.Core;
 
-import uwl.learning.QLearning;
-import uwl.learning.QLearning.State;
+import uwl.learning.QLearningSimple;
+import uwl.learning.QLearningSimple.State;
 
 public class Oracle {
-	private QLearning qlearn;
+	private QLearningSimple qlearn;
 	private State state1, state2;
 	private CameraDetector camera;
 	
@@ -20,6 +20,8 @@ public class Oracle {
 	
 	private BufferedReader robot1In, robot2In;
 	private BufferedWriter robot1Out, robot2Out;
+	
+	private double range = Math.PI / 36.0;
 
 	public static void main(String[] args) {
 		// load the native OpenCV library
@@ -34,10 +36,18 @@ public class Oracle {
 	public Oracle() throws UnknownHostException, IOException {
 		// Set up QLearning (this will train the Q matrix for each agent automatically)
 		// TODO: Save trained Q matrices for each agent
-		qlearn = new QLearning("world.txt");
+		qlearn = new QLearningSimple("world.txt", "trainedQ.txt");
 		state1 = qlearn.start1;
 		state2 = qlearn.start2;
 		camera = new CameraDetector(0, null);
+		
+		// Test actions
+		// System.out.println("(" + state1 + ") | ");
+		// for (int i = 0; i < 20; i++) {
+		// 	takeNextAction();
+		// 	System.out.println("(" + state1 + ") | ");
+		// }
+		// System.exit(0);
 
 		// Setup grid dimensions
 		startX = camera.width / 8.0;
@@ -105,6 +115,8 @@ public class Oracle {
 		State s2 = qlearn.updateState(qlearn.agent2, state2);
 		
 		// Make sure new states are not null and do not conflict
+		// TODO: May also need to verify that the robots do not run into another robot's boxes
+		System.out.println(s1 + " | " + s2);
 		if (s1 != null && s2 != null && s1.equals(s2))
 			return;
 		if (s1 != null)
@@ -123,16 +135,16 @@ public class Oracle {
 		double camStateX = robotState.x * gridDim + startX + gridDim/2;
 		double camStateY = robotState.y * gridDim + startY + gridDim/2;
 		// Determine angle (-180 to 180 deg) from robot's (x, y) position to state's center (x, y) position
-		double dirToState = Math.toDegrees(Math.atan2(camStateY - dirPos.y, camStateX - dirPos.x));
+		double dirToState = Math.atan2(camStateY - dirPos.centerY, camStateX - dirPos.centerX);
 		
 		// Check if robot is close to center of grid (are x and y positions within a range of 15?)
 		if (Math.abs(camStateX - robotState.x) < 15 && Math.abs(camStateY - robotState.y) < 15) {
 			// Robot has reached the center of next grid state
 			writer.write("stop\n");
 			return true;
-		} else if ((robotDir >= dirToState - 5 && robotDir <= dirToState + 5) || 
-				(robotDir + 360 >= dirToState - 5 && robotDir + 360 <= dirToState + 5) ||
-				(robotDir >= dirToState + 360 - 5 && robotDir <= dirToState + 360 + 5)) {
+		} else if ((robotDir >= dirToState - range && robotDir <= dirToState + range) || 
+				(robotDir + 360 >= dirToState - range && robotDir + 360 <= dirToState + range) ||
+				(robotDir >= dirToState + 360 - range && robotDir <= dirToState + 360 + range)) {
 			// Move Forward
 			writer.write("forward\n");
 		} else {
