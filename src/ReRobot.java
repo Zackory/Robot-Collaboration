@@ -15,8 +15,7 @@ import lejos.hardware.port.MotorPort;
 
 public class ReRobot {
 	public static EV3LargeRegulatedMotor right, left;
-	public static final int port1 = 1111, port2 = 2222;
-	public static int port;
+	public static final int port = 1234;
 	
 	public static void main(String[] args) throws IOException {
 		// Setup motors
@@ -27,19 +26,6 @@ public class ReRobot {
 		System.out.println("Motors set up");
 		System.out.println("Battery: " + Battery.getVoltage() + "\n");
 
-		// Let user select which robot this is (which port the robot will have)
-		System.out.println("UP for Robot 1, Down for Robot 2");
-		System.out.println("Robot 1 is placed on left. Robot 2 on the right.");
-		while (true) {
-			if (Button.UP.isDown()) {
-				port = port1;
-				break;
-			} else if (Button.DOWN.isDown()) {
-				port = port2;
-				break;
-			}
-		}
-		
 		// Setup wireless communication with PC
 		ServerSocket server = new ServerSocket(port);
 		System.out.println("Awaiting client..");

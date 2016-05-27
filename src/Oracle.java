@@ -43,7 +43,7 @@ public class Oracle {
 	public Oracle() throws UnknownHostException, IOException {
 		// Set up QLearning (this will train the Q matrix for each agent automatically)
 		// TODO: Save trained Q matrices for each agent
-		qlearn = new QLearningSimple("world.txt", "trainedQ.txt");
+		qlearn = new QLearningSimple("world.txt", "practiceQ.txt");
 		state1 = qlearn.start1;
 		state2 = qlearn.start2;
 		camera = new CameraDetector(1, null);
@@ -76,10 +76,11 @@ public class Oracle {
 		imshow.showImage(drawGrid(camera.frame.clone()));
 		
 		// Establish connections to robots
-		String ip = "10.0.1.1"; // Bluetooth IP
-		Socket socket1 = new Socket(ip, ReRobot.port1);
+		String ip1 = "10.0.1.1"; // Bluetooth IP
+		String ip2 = "10.0.2.1"; // Bluetooth IP
+		Socket socket1 = new Socket(ip1, ReRobot.port);
 		System.out.println("Connected to Robot 1.");
-		Socket socket2 = new Socket(ip, ReRobot.port2);
+		Socket socket2 = new Socket(ip2, ReRobot.port);
 		System.out.println("Connected to Robot 2.");
 
 		// Setup input and output streams for first robot
