@@ -63,7 +63,7 @@ public class FXController {
 			if (this.capture.isOpened()) {
 				this.cameraActive = true;
 				
-				if (camInt == 0) {
+				if (camInt == 1) {
 					capture.set(Videoio.CV_CAP_PROP_FRAME_WIDTH, 1920);
 					capture.set(Videoio.CV_CAP_PROP_FRAME_HEIGHT, 1080);
 				}

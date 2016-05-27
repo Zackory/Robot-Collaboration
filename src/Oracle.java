@@ -7,6 +7,10 @@ import java.net.Socket;
 import java.net.UnknownHostException;
 
 import org.opencv.core.Core;
+import org.opencv.core.Mat;
+import org.opencv.core.Point;
+import org.opencv.core.Scalar;
+import org.opencv.imgproc.Imgproc;
 
 import uwl.learning.QLearningSimple;
 import uwl.learning.QLearningSimple.State;
@@ -16,12 +20,14 @@ public class Oracle {
 	private State state1, state2;
 	private CameraDetector camera;
 	
-	private double startX, endX, gridDim, startY;
+	private double startX, endX, gridDim, startY, endY;
 	
 	private BufferedReader robot1In, robot2In;
 	private BufferedWriter robot1Out, robot2Out;
 	
 	private double range = Math.PI / 36.0;
+	
+	private Imshow imshow;
 
 	public static void main(String[] args) {
 		// load the native OpenCV library
@@ -39,7 +45,7 @@ public class Oracle {
 		qlearn = new QLearningSimple("world.txt", "trainedQ.txt");
 		state1 = qlearn.start1;
 		state2 = qlearn.start2;
-		camera = new CameraDetector(0, null);
+		camera = new CameraDetector(1, null);
 		
 		// Test actions
 		// System.out.println("(" + state1 + ") | ");
@@ -49,11 +55,23 @@ public class Oracle {
 		// }
 		// System.exit(0);
 
+		imshow = new Imshow("Video Preview", camera.width / 2, camera.height / 2);
+		imshow.Window.setResizable(true);
+		
 		// Setup grid dimensions
 		startX = camera.width / 8.0;
 		endX = camera.width * 7.0 / 8.0;
 		gridDim = (endX - startX) / qlearn.width;
 		startY = camera.height/2.0 - (gridDim * qlearn.height)/2.0;
+		endY = camera.height/2.0 + (gridDim * qlearn.height)/2.0;
+		
+		System.out.println(camera.width + ", " + camera.height + ", " + startX + ", " + endX + ", " + gridDim);
+		
+		for (int i = 0; i < 1000000; i++) {
+			imshow.showImage(drawGrid(camera.readFrame().clone()));
+		}
+
+		imshow.showImage(drawGrid(camera.frame.clone()));
 		
 		// Establish connections to robots
 		String ip = "10.0.1.1"; // Bluetooth IP
@@ -95,6 +113,7 @@ public class Oracle {
 						System.out.println("Robot 2 has successfully reached grid state: (" + state2.toString() + ")");
 					}
 				}
+				imshow.showImage(drawGrid(camera.frame.clone()));
 			}
 		}
 		
@@ -108,6 +127,16 @@ public class Oracle {
 		socket1.close();
 		socket2.close();
 		camera.closeCamera();
+	}
+	
+	public Mat drawGrid(Mat frame) {
+		// Draw rows on image
+		for (int i = 0; i <= qlearn.height; i++)
+			Imgproc.line(frame, new Point(startX, startY + i*gridDim), new Point(endX, startY + i*gridDim), new Scalar(7, 193, 255), 5);
+		// Draw columns on image
+		for (int i = 0; i <= qlearn.width; i++)
+			Imgproc.line(frame, new Point(startX + i*gridDim, startY), new Point(startX + i*gridDim, endY), new Scalar(7, 193, 255), 5);
+		return frame;
 	}
 
 	public void takeNextAction() {

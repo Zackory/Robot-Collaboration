@@ -20,6 +20,8 @@ public class CameraDetector {
 	public int height;
 
 	public boolean verbose = false;
+	
+	public Mat frame = new Mat();
 
 	public static void main(String[] args) {
 		// load the native OpenCV library
@@ -41,7 +43,6 @@ public class CameraDetector {
 		if (!this.capture.isOpened()) {
 			System.err.println("Unable to open the camera connection.");
 		} else {
-			Mat frame = new Mat();
 			try {
 				// Read the current frame to obtain width and height of camera image
 				this.capture.read(frame);
@@ -68,10 +69,15 @@ public class CameraDetector {
 			this.direction = Math.atan2(this.y, this.x);
 		}
 	}
+	
+	public Mat readFrame() {
+		// Read the current frame
+		this.capture.read(frame);
+		return frame;
+	}
 
 	// Returns an angle value between 0 and 360
 	public DirectionPosition getDirection(int robot) {
-		Mat frame = new Mat();
 		// Read the current frame
 		this.capture.read(frame);
 		return getDirection(robot, frame);
