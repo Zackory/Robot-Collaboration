@@ -44,7 +44,7 @@ public class FXController {
 
 	private Mat kernel = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(2, 2));
 	
-	int camInt = 0;
+	int camInt = 1;
 	
 	/**
 	 * The action triggered by pushing the button on the GUI
@@ -128,7 +128,7 @@ public class FXController {
 //					frame = detectColors(frame);
 					// frame = detectARContours(frame);
 					
-					CameraDetector.DirectionPosition dirPos = cameraDetector.getDirection(2, frame.clone());
+					CameraDetector.DirectionPosition dirPos = cameraDetector.getDirection(1, frame.clone());
 					if (dirPos == null)
 						return mat2Image(frame);
 					System.out.println(dirPos.direction + ", " + dirPos.x + ", " + dirPos.y);

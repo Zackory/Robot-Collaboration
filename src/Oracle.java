@@ -1,5 +1,6 @@
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
@@ -23,9 +24,9 @@ public class Oracle {
 	private double startX, endX, gridDim, startY, endY;
 	
 	private BufferedReader robot1In, robot2In;
-	private BufferedWriter robot1Out, robot2Out;
+	private DataOutputStream robot1Out, robot2Out;
 	
-	private double range = Math.PI / 36.0;
+	private double range = Math.PI / 18.0;
 	
 	private Imshow imshow;
 
@@ -67,25 +68,26 @@ public class Oracle {
 		
 		System.out.println(camera.width + ", " + camera.height + ", " + startX + ", " + endX + ", " + gridDim);
 		
-		for (int i = 0; i < 1000000; i++) {
+		/*for (int i = 0; i < 1000000; i++) {
 			imshow.showImage(drawGrid(camera.readFrame().clone()));
 		}
+		*/
 
 		imshow.showImage(drawGrid(camera.frame.clone()));
 		
 		// Establish connections to robots
 		String ip = "10.0.1.1"; // Bluetooth IP
-		Socket socket1 = new Socket(ip, Robot.port1);
+		Socket socket1 = new Socket(ip, ReRobot.port1);
 		System.out.println("Connected to Robot 1.");
-		Socket socket2 = new Socket(ip, Robot.port2);
+		Socket socket2 = new Socket(ip, ReRobot.port2);
 		System.out.println("Connected to Robot 2.");
 
 		// Setup input and output streams for first robot
 		robot1In = new BufferedReader(new InputStreamReader(socket1.getInputStream()));
-		robot1Out = new BufferedWriter(new OutputStreamWriter(socket1.getOutputStream()));
+		robot1Out = new DataOutputStream(socket1.getOutputStream());
 		// Setup input and output streams for second robot
 		robot2In = new BufferedReader(new InputStreamReader(socket2.getInputStream()));
-		robot2Out = new BufferedWriter(new OutputStreamWriter(socket2.getOutputStream()));
+		robot2Out = new DataOutputStream(socket2.getOutputStream());
 
 		System.out.println("Buffered readers and writers established for both robots.");
 		
@@ -118,8 +120,8 @@ public class Oracle {
 		}
 		
 		// Close everything
-		robot1Out.write("exit\n");
-		robot2Out.write("exit\n");
+		robot1Out.writeUTF("exit\n");
+		robot2Out.writeUTF("exit\n");
 		robot1In.close();
 		robot1Out.close();
 		robot2In.close();
@@ -155,10 +157,14 @@ public class Oracle {
 	}
 	
 	// Returns true if the robot has reached the center of the grid state, else false
-	public boolean moveRobotToState(int robotId, State robotState, BufferedWriter writer) throws IOException {
+	public boolean moveRobotToState(int robotId, State robotState, DataOutputStream writer) throws IOException {
 		// Use OpenCV to determine direction and compare to direction of (state1 - robotCurrentState)
 		
 		CameraDetector.DirectionPosition dirPos = camera.getDirection(robotId);
+		if (dirPos == null) {
+			System.out.println("dirPos is null!");
+			return false;
+		}
 		double robotDir = dirPos.direction;
 		// Determine the camera (x, y) position for the center of this grid state.
 		double camStateX = robotState.x * gridDim + startX + gridDim/2;
@@ -166,20 +172,29 @@ public class Oracle {
 		// Determine angle (-180 to 180 deg) from robot's (x, y) position to state's center (x, y) position
 		double dirToState = Math.atan2(camStateY - dirPos.centerY, camStateX - dirPos.centerX);
 		
+		// System.out.println("Robot Direction: " + robotDir + ", Direction to State: " + dirToState);
+		
 		// Check if robot is close to center of grid (are x and y positions within a range of 15?)
-		if (Math.abs(camStateX - robotState.x) < 15 && Math.abs(camStateY - robotState.y) < 15) {
+		if (Math.abs(camStateX - dirPos.centerX) < 25 && Math.abs(camStateY - dirPos.centerY) < 25) {
 			// Robot has reached the center of next grid state
-			writer.write("stop\n");
+			writer.writeUTF("stop\n");
 			return true;
 		} else if ((robotDir >= dirToState - range && robotDir <= dirToState + range) || 
-				(robotDir + 360 >= dirToState - range && robotDir + 360 <= dirToState + range) ||
-				(robotDir >= dirToState + 360 - range && robotDir <= dirToState + 360 + range)) {
+				(robotDir + 2*Math.PI >= dirToState - range && robotDir + 2*Math.PI <= dirToState + range) ||
+				(robotDir >= dirToState + 2*Math.PI - range && robotDir <= dirToState + 2*Math.PI + range)) {
 			// Move Forward
-			writer.write("forward\n");
+			writer.writeUTF("forward\n");
 		} else {
 			// Either turn left or right, depending on whichever is closest
-			// Just turn left, this is a crude solution
-			writer.write("left\n");
+			double diff = dirToState - robotDir;
+			if (diff < -Math.PI)
+				diff += 2*Math.PI;
+			if (diff > 0)
+				// Turning left is closer
+				writer.writeUTF("right\n");
+			else
+				// Turning right is closer
+				writer.writeUTF("left\n");
 		}
 		return false;
 	}

@@ -19,7 +19,7 @@ public class PC {
 		String ip = "10.0.1.1"; // BT
 		if(args.length > 0)
 			ip = args[0];
-		Socket sock = new Socket(ip, Robot.port);
+		Socket sock = new Socket(ip, ReRobot.port);
 		System.out.println("Connected");
 		
 		Aruco.getPredefinedDictionary();

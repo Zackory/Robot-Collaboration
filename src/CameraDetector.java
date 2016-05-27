@@ -84,13 +84,14 @@ public class CameraDetector {
 	}
 
 	// Returns an angle value between 0 and 360
-	public DirectionPosition getDirection(int arTag, Mat frame) {
+	public DirectionPosition getDirection(int arTag, Mat origFrame) {
 		// Should use opencv to grab camera frame and parse a robot's direction.
 		if (!this.capture.isOpened()) {
 			System.out.println("Camera is not yet opened!");
 			return null;
 		}
 
+		Mat frame = origFrame.clone();
 		// Return null if the camera frame is empty
 		if (frame == null || frame.empty()) {
 			System.out.println("Camera frame is empty. getDirection() in CameraDetector is returning null.");

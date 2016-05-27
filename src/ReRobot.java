@@ -13,7 +13,7 @@ import lejos.hardware.Button;
 import lejos.hardware.motor.EV3LargeRegulatedMotor;
 import lejos.hardware.port.MotorPort;
 
-public class Robot {
+public class ReRobot {
 	public static EV3LargeRegulatedMotor right, left;
 	public static final int port1 = 1111, port2 = 2222;
 	public static int port;
@@ -22,13 +22,13 @@ public class Robot {
 		// Setup motors
 		right = new EV3LargeRegulatedMotor(MotorPort.A);
 		left = new EV3LargeRegulatedMotor(MotorPort.B);
-		right.setSpeed(100 * Battery.getVoltage());
-		left.setSpeed(100 * Battery.getVoltage());
+		right.setSpeed(25 * Battery.getVoltage());
+		left.setSpeed(25 * Battery.getVoltage());
 		System.out.println("Motors set up");
 		System.out.println("Battery: " + Battery.getVoltage() + "\n");
 
 		// Let user select which robot this is (which port the robot will have)
-		System.out.println("Select which robot this is. Press UP for Robot 1 and Down for Robot 2");
+		System.out.println("UP for Robot 1, Down for Robot 2");
 		System.out.println("Robot 1 is placed on left. Robot 2 on the right.");
 		while (true) {
 			if (Button.UP.isDown()) {
@@ -50,27 +50,32 @@ public class Robot {
 		InputStream in = client.getInputStream();
 		BufferedReader reader = new BufferedReader(new InputStreamReader(in));
 		// Read first line
-		String line = reader.readLine().toLowerCase();
+		String line = reader.readLine();
+		
 
 		// Loop to move robot based on received commands (stop once "exit" is received).
-		while (!line.equals("exit")) {
-			if (line.equals("forward")) {
+		while (line != null && !line.equals("exit")) {
+			line = line.toLowerCase();
+			System.out.println("Command received: " + line);
+			if (line.contains("forward")) {
 				right.forward();
 				left.forward();
-			} else if (line.equals("right")) {
+			} else if (line.contains("right")) {
 				right.backward();
 				left.forward();
-			} else if (line.equals("left")) {
+			} else if (line.contains("left")) {
 				right.forward();
 				left.backward();
-			} else if (line.equals("stop")) {
+			} else if (line.contains("stop")) {
 				right.stop(true);
 				left.stop(true);
 			}
 			// Read next line
-			line = reader.readLine().toLowerCase();
+			line = reader.readLine();
 		}
 		
+		right.stop(true);
+		left.stop(true);
 		System.out.println("Exit command has been received.");
 		System.out.println("Press any button to exit robot client.");
 		Button.waitForAnyPress();
